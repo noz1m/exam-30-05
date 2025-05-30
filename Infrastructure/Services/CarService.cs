@@ -68,18 +68,23 @@ public class CarService(DataContext context) : ICarService
     public async Task<Response<CarBookingDetailsDto>> GetCarBookingDetailsDto(int id)
     {
         var car = await context.Cars
-            .Include(c => c.Users)
-            .Include(c => c.Bookings)
-            .FirstOrDefaultAsync(c => c.Id == id);
-        return car == null
-            ? new Response<CarBookingDetailsDto>("Car not found", HttpStatusCode.NotFound)
-            : new Response<CarBookingDetailsDto>(new CarBookingDetailsDto
+        .Where(c => c.Id == id)
+        .Select(c => new CarBookingDetailsDto
+        {
+            CarId = c.Id,
+            CarModel = c.Model,
+            Bookings = c.Bookings.Select(b => new BookingInfoDto
             {
-                UserName = car.Users.UserName,
-                StartDate = car.Bookings.StartDate,
-                EndDate = car.Bookings.EndDate,
-                TotalPrice = Bookings.TotalPrice                
-            }, "Car found");
+                UserName = b.User.UserName,
+                StartDate = b.StartDate,
+                EndDate = b.EndDate,
+                TotalPrice = b.TotalPrice
+            }).ToList()
+        })
+        .FirstOrDefaultAsync();
+    return car == null
+        ? new Response<CarBookingDetailsDto>("Car not found", HttpStatusCode.NotFound)
+        : new Response<CarBookingDetailsDto>(car, "Car found");
     }
     public async Task<Response<string>> CreateAsync(CarDTO carDTO)
     {
